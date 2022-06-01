@@ -53,3 +53,5 @@ repos:
   hooks:
   - id: flake8
     additional_dependencies: [flake8-bugbear]
+    args:
+    - --ignore=B008
