@@ -37,25 +37,10 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(database.get_db)
     db_user = auth.get_user(db, email=user.email)
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
-    return auth.create_user(db=db, user=user)
+    return auth.create_user(db=db, user=user, role="user")
 
 
 @router.get("/users/", dependencies=requires_auth, response_model=List[schemas.User])
 def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(database.get_db)):
     users = auth.get_users(db, skip=skip, limit=limit)
     return users
-
-
-@router.post("/users/items/", dependencies=requires_auth, response_model=schemas.Item)
-def create_item_for_user(
-    item: schemas.ItemCreate,
-    db: Session = Depends(database.get_db),
-    user: database.User = Depends(auth.get_current_active_user),
-):
-    return auth.create_user_item(db=db, item=item, user=user)
-
-
-@router.get("/items/", response_model=List[schemas.Item])
-def read_items(skip: int = 0, limit: int = 100, db: Session = Depends(database.get_db)):
-    items = auth.get_items(db, skip=skip, limit=limit)
-    return items

@@ -1,17 +1,18 @@
 import os
 from datetime import datetime, timedelta
-from typing import Union
+from typing import List, Union
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
+from loguru import logger
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
 from oxeo.api.models import database, schemas
 
-SECRET_KEY = os.environ.get("SERVER-SECRET", "my-secret")
-ALGORITHM = os.environ.get("SERVER-ALGORITHM", "HS256")
+SECRET_KEY = os.environ.get("SERVER_SECRET")
+ALGORITHM = os.environ.get("SERVER_ALGORITHM")
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -80,24 +81,24 @@ async def get_current_active_user(
     return current_user
 
 
-def create_user(db: Session, user: schemas.UserCreate):
+class RoleChecker:
+    def __init__(self, allowed_roles: List):
+        self.allowed_roles = allowed_roles
+
+    def __call__(self, user: schemas.User = Depends(get_current_active_user)):
+        if user.role not in self.allowed_roles:
+            logger.debug(f"User with role {user.role} not in {self.allowed_roles}")
+            raise HTTPException(status_code=403, detail="Operation not permitted")
+
+
+def create_user(db: Session, user: schemas.UserCreate, role: str):
     hashed_password = get_password_hash(user.password)
     print("CREAT_USER")
     print(hashed_password)
-    db_user = database.User(email=user.email, hashed_password=hashed_password)
+    db_user = database.User(
+        email=user.email, hashed_password=hashed_password, role=role
+    )
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
     return db_user
-
-
-def get_items(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(database.Item).offset(skip).limit(limit).all()
-
-
-def create_user_item(db: Session, item: schemas.ItemCreate, user: int):
-    db_item = database.Item(**item.dict(), owner_id=user.id)
-    db.add(db_item)
-    db.commit()
-    db.refresh(db_item)
-    return db_item

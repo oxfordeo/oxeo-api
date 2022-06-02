@@ -1,9 +1,11 @@
 # oxeo/api/models/tables.py
 import os
 
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, create_engine
+from geoalchemy2 import Geometry
+from sqlalchemy import Boolean, Column, Date, ForeignKey, Integer, String, create_engine
+from sqlalchemy.dialects.postgresql import ARRAY, ENUM, JSONB
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 DB_USER = os.environ.get("PG_DB_USER")
 DB_PW = os.environ.get("PG_DB_PW")
@@ -11,17 +13,19 @@ DB_HOST = os.environ.get("PG_DB_HOST")
 DB_NAME = os.environ.get("PG_DB_NAME")
 
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///./sql_app.db"
-# SQLALCHEMY_DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}/{DB_NAME}"
+# SQLALCHEMY_DATABASE_URL = "sqlite:///./sql_app.db"
+SQLALCHEMY_DATABASE_URL = f"postgresql://{DB_USER}:{DB_PW}@{DB_HOST}/{DB_NAME}"
 
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
-)
+engine = create_engine(SQLALCHEMY_DATABASE_URL)
 
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
+
+VALID_ROLES = ("user", "admin")
+VALID_AOI_LABELS = ("waterbody", "agricultural_area", "basin", "admin_area")
+VALID_EVENT_LABELS = ("ndvi", "water_extents", "soil_moisture", "prediction")
 
 
 # Dependency
@@ -40,16 +44,28 @@ class User(Base):
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
     is_active = Column(Boolean, default=True)
+    role = Column(ENUM(*VALID_ROLES, name="role"))
+    data = Column(JSONB)
 
-    items = relationship("Item", back_populates="owner")
 
+class AOI(Base):
 
-class Item(Base):
-    __tablename__ = "items"
+    __tablename__ = "aois"
 
     id = Column(Integer, primary_key=True, index=True)
-    title = Column(String, index=True)
-    description = Column(String, index=True)
-    owner_id = Column(Integer, ForeignKey("users.id"))
+    geometry = Column(Geometry(geometry_type="MultiPolygon", srid=4326))
+    labels = Column(ARRAY(ENUM(*VALID_AOI_LABELS, name="label")), index=True)
+    properties = Column(JSONB)
 
-    owner = relationship("User", back_populates="items")
+
+class Events(Base):
+
+    __tablename__ = "events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    labels = Column(ARRAY(ENUM(*VALID_EVENT_LABELS, name="label")), index=True)
+    aoi_id = Column(Integer, ForeignKey("aois.id"))
+    datetime = Column(Date, index=True)
+    properties = Column(JSONB)
+
+    # aoi = relationship("AOI", back_populates="events")
