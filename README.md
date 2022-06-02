@@ -16,6 +16,35 @@ It has some default directories and pip setup to get you started.
 pip install .
 ```
 
+## DB Management
+
+### Initial Setup
+
+Connect to the db:
+
+    psql -h hostname -p portNumber -U userName dbName -W
+
+Install extensions:
+
+    CREATE EXTENSION postgis;
+    CREATE EXTENSION hstore;
+
+
+### Revisions
+
+With [Alembic](https://alembic.sqlalchemy.org/en/latest/tutorial.html#the-migration-environment):
+
+Auto-Generate a revision:
+
+    alembic revision --autogenerate -m "<my revision commit message>"
+
+Update the db:
+
+    alembic upgrade head
+
+You may need to tidy up the migration script at `./alembic/versions/<hash>_<my_commit_message>.py`
+
+
 ## Development
 ```
 pip install -e .[dev]
