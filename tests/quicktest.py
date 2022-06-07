@@ -4,10 +4,12 @@ import os
 import requests
 
 url_base = "http://0.0.0.0:8081"
+U = os.environ.get("email")
+P = os.environ.get("password")
 
 
 # create a user
-payload = {"email": "me5@ox.ca", "password": "mypoo"}
+payload = {"email": U, "password": P}
 r = requests.post(os.path.join(url_base, "users"), json=payload)
 
 print(r.status_code)
@@ -16,7 +18,7 @@ print(r.text)
 # login
 
 authurl = "http://0.0.0.0:8081/auth/token"
-r = requests.post(authurl, data={"username": "me5@ox.ca", "password": "mypoo"})
+r = requests.post(authurl, data={"username": U, "password": P})
 
 print(r.status_code)
 print(r.text)
