@@ -1,16 +1,20 @@
 from datetime import timedelta
-from typing import List
+from typing import List, Union
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
 from oxeo.api.controllers import authentication as auth
+from oxeo.api.controllers import geom
 from oxeo.api.models import database, schemas
 
 router = APIRouter()
 
+
 requires_auth = [Depends(auth.get_current_active_user)]
+admin_checker = auth.RoleChecker(["admin"])
+requires_admin = [Depends(auth.get_current_active_user), Depends(admin_checker)]
 
 
 @router.post("/auth/token", response_model=schemas.Token)
@@ -40,7 +44,61 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(database.get_db)
     return auth.create_user(db=db, user=user, role="user")
 
 
-@router.get("/users/", dependencies=requires_auth, response_model=List[schemas.User])
-def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(database.get_db)):
-    users = auth.get_users(db, skip=skip, limit=limit)
-    return users
+@router.get("/users/", dependencies=requires_auth, response_model=schemas.User)
+def read_users(
+    db: Session = Depends(database.get_db),
+    user: database.User = Depends(auth.get_current_active_user),
+):
+    user = dict(id=user.id, role=user.role, email=user.email, is_active=user.is_active)
+
+    return user
+
+
+@router.post("/aoi/", dependencies=requires_admin, status_code=status.HTTP_201_CREATED)
+def post_aoi(
+    aoi: schemas.Feature,
+    db: Session = Depends(database.get_db),
+    user: database.User = Depends(auth.get_current_active_user),
+):
+    created_aoi = geom.create_aoi(db=db, aoi=aoi, user=user)
+    return {"id": created_aoi.id}
+
+
+@router.get(
+    "/aoi/",
+    dependencies=requires_auth,
+    response_model=Union[schemas.Feature, schemas.FeatureCollection],
+)
+def get_aoi(
+    aoi_query: schemas.AOIQuery,
+    db: Session = Depends(database.get_db),
+    user: database.User = Depends(auth.get_current_active_user),
+):
+    return geom.get_aoi(aoi_query=aoi_query, db=db, user=user)
+
+
+@router.post(
+    "/events/", dependencies=requires_admin, status_code=status.HTTP_201_CREATED
+)
+def post_events(
+    events: Union[schemas.EventCreate, List[schemas.EventCreate]],
+    db: Session = Depends(database.get_db),
+    user: database.User = Depends(auth.get_current_active_user),
+):
+    if isinstance(events, schemas.EventCreate):
+        events = [events]
+
+    created_events = geom.create_events(events=events, db=db, user=user)
+
+    return {"id": [event.id for event in created_events]}
+
+
+@router.get(
+    "/events/", dependencies=requires_auth, response_model=schemas.EventQueryReturn
+)
+def get_events(
+    event_query: schemas.EventQuery,
+    db: Session = Depends(database.get_db),
+    user: database.User = Depends(auth.get_current_active_user),
+):
+    return geom.get_events(event_query=event_query, db=db, user=user)

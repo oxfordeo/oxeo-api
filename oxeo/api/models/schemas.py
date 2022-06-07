@@ -1,6 +1,8 @@
 # oxeo/api/models/data.py
 
 
+from datetime import date
+
 # data models for pydantic
 from typing import List, Optional, Tuple, TypeVar, Union
 
@@ -51,6 +53,9 @@ class Geometry(BaseModel):
         ..., example=[[[1, 3], [2, 2], [4, 4], [1, 3]]]
     )
 
+    def get(self, attr):
+        return getattr(self, attr)
+
 
 class Feature(BaseModel):
     type: str = Field("Feature", const=True)
@@ -58,11 +63,13 @@ class Feature(BaseModel):
     properties: Optional[Props]
     id: Optional[str]
     bbox: Optional[BBox]
+    labels: Optional[List[str]]
 
 
 class FeatureCollection(BaseModel):
     type: str = Field("FeatureCollection", const=True)
     features: List[Feature]
+    properties: Optional[Props]
 
     def __iter__(self):
         """iterate over features"""
@@ -75,3 +82,38 @@ class FeatureCollection(BaseModel):
     def __getitem__(self, index):
         """get feature at a given index"""
         return self.features[index]
+
+
+class AOIQuery(BaseModel):
+    id: Optional[Union[int, List[int]]]
+    geometry: Optional[Geometry]
+    labels: Optional[List[str]]
+    keyed_values: Optional[dict]
+    limit: Optional[int]
+    page: Optional[int]
+
+
+class EventCreate(BaseModel):
+    labels: Union[str, List[str]]
+    aoi_id: int
+    datetime: date
+    keyed_values: dict
+
+
+class Event(EventCreate):
+    id: int
+
+
+class EventQueryReturn(BaseModel):
+    events: List[Event]
+    next_page: Optional[int]
+
+
+class EventQuery(BaseModel):
+    aoi_id: Union[int, List[int]]
+    labels: Optional[List[str]]
+    start_datetime: date
+    end_datetime: date
+    keyed_values: Optional[dict]
+    limit: Optional[int]
+    page: Optional[int]
