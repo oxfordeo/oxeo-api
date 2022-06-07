@@ -1,8 +1,8 @@
 """initial db creation
 
-Revision ID: c0dcf38e4345
+Revision ID: daa00d9bc7ec
 Revises:
-Create Date: 2022-06-02 10:17:41.249708
+Create Date: 2022-06-06 12:55:53.651380
 
 """
 import geoalchemy2
@@ -12,7 +12,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = "c0dcf38e4345"
+revision = "daa00d9bc7ec"
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -41,7 +41,7 @@ def upgrade() -> None:
                     "agricultural_area",
                     "basin",
                     "admin_area",
-                    name="label",
+                    name="AOILabel",
                 )
             ),
             nullable=True,
@@ -72,7 +72,11 @@ def upgrade() -> None:
             "labels",
             postgresql.ARRAY(
                 postgresql.ENUM(
-                    "ndvi", "water_extents", "soil_moisture", "prediction", name="label"
+                    "ndvi",
+                    "water_extents",
+                    "soil_moisture",
+                    "prediction",
+                    name="EventLabel",
                 )
             ),
             nullable=True,

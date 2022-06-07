@@ -54,7 +54,7 @@ class AOI(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     geometry = Column(Geometry(geometry_type="MultiPolygon", srid=4326))
-    labels = Column(ARRAY(ENUM(*VALID_AOI_LABELS, name="label")), index=True)
+    labels = Column(ARRAY(ENUM(*VALID_AOI_LABELS, name="AOILabel")), index=True)
     properties = Column(JSONB)
 
 
@@ -63,7 +63,7 @@ class Events(Base):
     __tablename__ = "events"
 
     id = Column(Integer, primary_key=True, index=True)
-    labels = Column(ARRAY(ENUM(*VALID_EVENT_LABELS, name="label")), index=True)
+    labels = Column(ARRAY(ENUM(*VALID_EVENT_LABELS, name="EventLabel")), index=True)
     aoi_id = Column(Integer, ForeignKey("aois.id"))
     datetime = Column(Date, index=True)
     properties = Column(JSONB)
