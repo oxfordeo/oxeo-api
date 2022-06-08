@@ -4,6 +4,7 @@ from typing import List, Union
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
+from starlette.responses import RedirectResponse
 
 from oxeo.api.controllers import authentication as auth
 from oxeo.api.controllers import geom
@@ -15,6 +16,12 @@ router = APIRouter()
 requires_auth = [Depends(auth.get_current_active_user)]
 admin_checker = auth.RoleChecker(["admin"])
 requires_admin = [Depends(auth.get_current_active_user), Depends(admin_checker)]
+
+
+@router.get("/")
+async def redirect():
+    response = RedirectResponse(url="/docs#")
+    return response
 
 
 @router.post("/auth/token", response_model=schemas.Token)
