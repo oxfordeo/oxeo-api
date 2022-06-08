@@ -12,5 +12,6 @@ loguru
 shapely
 mangum
 pytest
+loguru
 psycopg2-binary
 python-multipart
