@@ -12,3 +12,4 @@ loguru
 shapely
 magnum
 pytest
+psycopg2
