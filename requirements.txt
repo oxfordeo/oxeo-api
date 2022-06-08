@@ -13,3 +13,4 @@ shapely
 magnum
 pytest
 psycopg2
+python-multipart
