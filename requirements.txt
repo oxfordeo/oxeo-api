@@ -10,7 +10,7 @@ alembic
 geoalchemy2
 loguru
 shapely
-magnum
+mangum
 pytest
 psycopg2
 python-multipart
