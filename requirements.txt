@@ -1,7 +1,13 @@
-.[dev]
-
-# Lock version dependencies here if needed
-numpy==1.21.3
-
-# Or just use as normal if you don't need setup.cfg!
-# Make sure to delete the .[dev] line in that case.
+# Requirements.txt for aws lambda -> normally use setup.cfg
+uvicorn~=0.17
+passlib[bcrypt]
+cryptography
+fastapi
+pydantic
+python-jose
+SQLAlchemy
+alembic
+geoalchemy2
+loguru
+shapely
+magnum
