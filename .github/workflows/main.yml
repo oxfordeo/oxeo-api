@@ -49,7 +49,7 @@ jobs:
       
       # Step 8
       - name: Add App to Zip file
-        run: cd ./oxeo-api && zip -g ../api.zip -r .
+        run: cd ./oxeo/api && zip -g ../../api.zip -r .
       
       # Step 9
       - name: Upload zip file artifact
