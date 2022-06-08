@@ -35,7 +35,7 @@ async def login_for_access_token(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-@router.post("/users/", response_model=schemas.User)
+@router.post("/users/", dependencies=requires_admin, response_model=schemas.User)
 def create_user(user: schemas.UserCreate, db: Session = Depends(database.get_db)):
     db_user = auth.get_user(db, email=user.email)
     if db_user:
