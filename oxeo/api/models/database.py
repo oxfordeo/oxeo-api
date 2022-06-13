@@ -76,6 +76,7 @@ class Asset(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     geometry = Column(Geometry(geometry_type="Point", srid=4326))
+    name = Column(String, unique=True)
     labels = Column(ARRAY(ENUM(*VALID_ASSET_LABELS, name="AssetLabel")), index=True)
     properties = Column(JSONB)
     company = relationship("Company", secondary="asset_company_link")
@@ -96,4 +97,4 @@ class AssetCompany(Base):
     __tablename__ = "asset_company_link"
     company_id = Column(Integer, ForeignKey("companies.id"), primary_key=True)
     asset_id = Column(Integer, ForeignKey("assets.id"), primary_key=True)
-    properties = Column(JSONB)
+    properties = Column(JSONB)  # ownership percentages and such

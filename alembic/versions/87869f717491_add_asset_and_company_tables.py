@@ -1,8 +1,8 @@
 """Add Asset and Company tables
 
-Revision ID: ac9e86a6288a
+Revision ID: 87869f717491
 Revises: daa00d9bc7ec
-Create Date: 2022-06-13 15:57:35.236487
+Create Date: 2022-06-13 16:41:00.001038
 
 """
 import geoalchemy2
@@ -12,7 +12,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = "ac9e86a6288a"
+revision = "87869f717491"
 down_revision = "daa00d9bc7ec"
 branch_labels = None
 depends_on = None
@@ -33,6 +33,7 @@ def upgrade() -> None:
             ),
             nullable=True,
         ),
+        sa.Column("name", sa.String(), nullable=True),
         sa.Column(
             "labels",
             postgresql.ARRAY(
@@ -42,9 +43,10 @@ def upgrade() -> None:
         ),
         sa.Column("properties", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
         sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("name"),
     )
-    # op.create_index('idx_assets_geometry', 'assets',
-    #    ['geometry'], unique=False, postgresql_using='gist', postgresql_ops={})
+    # op.create_index('idx_assets_geometry', 'assets', ['geometry'],
+    #    unique=False, postgresql_using='gist', postgresql_ops={})
     op.create_index(op.f("ix_assets_id"), "assets", ["id"], unique=False)
     op.create_index(op.f("ix_assets_labels"), "assets", ["labels"], unique=False)
     op.create_table(
@@ -87,7 +89,7 @@ def downgrade() -> None:
     # sa.Column('proj4text', sa.VARCHAR(length=2048),
     #    autoincrement=False, nullable=True),
     # sa.CheckConstraint('(srid > 0) AND (srid <= 998999)',
-    #    name='spatial_ref_sys_srid_check'),
+    #   name='spatial_ref_sys_srid_check'),
     # sa.PrimaryKeyConstraint('srid', name='spatial_ref_sys_pkey')
     # )
     op.drop_table("asset_company_link")
@@ -95,11 +97,7 @@ def downgrade() -> None:
     op.drop_table("companies")
     op.drop_index(op.f("ix_assets_labels"), table_name="assets")
     op.drop_index(op.f("ix_assets_id"), table_name="assets")
-    op.drop_index(
-        "idx_assets_geometry",
-        table_name="assets",
-        postgresql_using="gist",
-        postgresql_ops={},
-    )
+    # op.drop_index('idx_assets_geometry', table_name='assets',
+    #    postgresql_using='gist', postgresql_ops={})
     op.drop_table("assets")
     # ### end Alembic commands ###
