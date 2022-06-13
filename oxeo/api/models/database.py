@@ -5,7 +5,7 @@ from geoalchemy2 import Geometry
 from sqlalchemy import Boolean, Column, Date, ForeignKey, Integer, String, create_engine
 from sqlalchemy.dialects.postgresql import ARRAY, ENUM, JSONB
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import relationship, sessionmaker
 
 DB_USER = os.environ.get("PG_DB_USER")
 DB_PW = os.environ.get("PG_DB_PW")
@@ -13,11 +13,9 @@ DB_HOST = os.environ.get("PG_DB_HOST")
 DB_NAME = os.environ.get("PG_DB_NAME")
 
 
-# SQLALCHEMY_DATABASE_URL = "sqlite:///./sql_app.db"
 SQLALCHEMY_DATABASE_URL = f"postgresql://{DB_USER}:{DB_PW}@{DB_HOST}/{DB_NAME}"
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
-
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -26,6 +24,7 @@ Base = declarative_base()
 VALID_ROLES = ("user", "admin")
 VALID_AOI_LABELS = ("waterbody", "agricultural_area", "basin", "admin_area")
 VALID_EVENT_LABELS = ("ndvi", "water_extents", "soil_moisture", "prediction")
+VALID_ASSET_LABELS = ("mine", "power_station")
 
 
 # Dependency
@@ -69,3 +68,31 @@ class Events(Base):
     properties = Column(JSONB)
 
     # aoi = relationship("AOI", back_populates="events")
+
+
+class Asset(Base):
+
+    __tablename__ = "assets"
+
+    id = Column(Integer, primary_key=True, index=True)
+    geometry = Column(Geometry(geometry_type="Point", srid=4326))
+    labels = Column(ARRAY(ENUM(*VALID_ASSET_LABELS, name="AssetLabel")), index=True)
+    properties = Column(JSONB)
+    aoi = relationship("Company", secondary="asset_company_link")
+
+
+class Company(Base):
+
+    __tablename__ = "companies"
+
+    id = Column(Integer, primary_key=True, index=True)
+    assets = relationship("Asset", secondary="asset_company_link")
+    properties = Column(JSONB)
+
+
+class AssetCompany(Base):
+
+    __tablename__ = "asset_company_link"
+    company_id = Column(Integer, ForeignKey("companies.id"), primary_key=True)
+    asset_id = Column(Integer, ForeignKey("assets.id"), primary_key=True)
+    properties = Column(JSONB)
