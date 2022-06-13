@@ -58,8 +58,6 @@ def check_aoi(aoi: schemas.Feature):
         aoi.properties = {}
 
     # if aoi is supplied with an id or bbox update them in properties.
-    if aoi.id is not None:
-        aoi.properties["_id"] = aoi.id
     if aoi.bbox is not None:
         aoi.properties["bbox"] = aoi.bbox
 
@@ -87,6 +85,32 @@ def check_aoi(aoi: schemas.Feature):
             )
 
     return aoi
+
+
+def update_aoi(db: Session, aoi: schemas.Feature, user: schemas.User):
+
+    aoi = check_aoi(aoi)
+
+    # update the db
+    db_aoi = db.query(database.AOI).filter(database.AOI.id == aoi.id).first()
+
+    # check labels
+    if db_aoi.labels != aoi.labels:
+        db_aoi.labels = aoi.labels
+
+    # check properties
+    if db_aoi.properties != aoi.properties:
+        db_aoi.properties = aoi.properties
+
+    # check geometry
+    if pg2shapely(db_aoi.geometry).wkt != preprocess_geometry(aoi.geometry):  # wkt
+        db_aoi.geometry = preprocess_geometry(aoi.geometry)
+
+    # commit
+    db.commit()
+    db.refresh(db_aoi)
+
+    return db_aoi
 
 
 def create_aoi(db: Session, aoi: schemas.Feature, user: schemas.User):
@@ -144,6 +168,9 @@ def get_aoi(aoi_query: schemas.AOIQuery, db: Session, user: schemas.User):
     if aoi_query.limit is None:
         aoi_query.limit = 1000
 
+    if isinstance(aoi_query.id, int):
+        aoi_query.id = enforce_list(aoi_query.id)
+
     Q = db.query(database.AOI)
 
     # if a single id is given, just get that id
@@ -192,6 +219,54 @@ def get_aoi(aoi_query: schemas.AOIQuery, db: Session, user: schemas.User):
         next_page = None
 
     return postprocess_aois(results[0 : aoi_query.limit], next_page)  # noqa
+
+
+def check_not_id(event):
+    if isinstance(event, schemas.EventCreate) and not isinstance(event, schemas.Event):
+        return True
+    else:
+        return False
+
+
+def maybe_create_events(
+    events: List[Union[schemas.Event, schemas.EventCreate]],
+    db: Session,
+    user: schemas.User,
+):
+
+    events_to_create = [event for event in events if check_not_id(event)]
+    events_to_update = [event for event in events if isinstance(event, schemas.Event)]
+
+    _events = create_events(events_to_create, db, user) + update_events(
+        events_to_update, db, user
+    )
+
+    return _events
+
+
+def update_event(event: schemas.Event, db: Session, user: schemas.User):
+    db_event = db.query(database.Events).filter(database.Events.id == event.id).first()
+
+    if db_event.labels != enforce_list(event.labels):
+        db_event.labels = enforce_list(event.labels)
+    if db_event.aoi_id != event.aoi_id:
+        db_event.aoi_id = event.aoi_id
+    if db_event.datetime != event.datetime:
+        db_event.datetime = event.datetime
+    if db_event.properties != event.keyed_values:
+        db_event.properties = event.keyed_values
+
+    db.commit()
+    db.refresh(db_event)
+
+    return db_event
+
+
+def update_events(events: List[schemas.Event], db: Session, user: schemas.User):
+
+    db_events = [update_event(event, db, user) for event in events]
+
+    return db_events
 
 
 def create_events(events: List[schemas.EventCreate], db: Session, user: schemas.User):
@@ -263,6 +338,11 @@ def get_events(event_query: schemas.EventQuery, db: Session, user: schemas.User)
     # if single aoi_id is given, wrap it in list
     if isinstance(event_query.aoi_id, int):
         event_query.aoi_id = [event_query.aoi_id]
+    if isinstance(event_query.id, int):
+        event_query.id = [event_query.id]
+
+    if event_query.id is not None:
+        Q = Q.filter(database.Events.id.in_(tuple(event_query.id)))
 
     Q = Q.filter(database.Events.aoi_id.in_(tuple(event_query.aoi_id)))
 
@@ -298,3 +378,26 @@ def get_events(event_query: schemas.EventQuery, db: Session, user: schemas.User)
         next_page = None
 
     return postprocess_events(results[0 : event_query.limit], next_page)  # noqa
+
+
+def delete_objects(delete_query: schemas.DeleteObj, db: Session, user: schemas.User):
+
+    if delete_query.table not in ["events", "aoi"]:
+        raise HTTPException(
+            status_code=400,
+            detail="Field `Table` must be one of [events,aoi]",
+        )
+    delete_query.id = enforce_list(delete_query.id)
+
+    if delete_query.table == "events":
+        db.query(database.Events).filter(
+            database.Events.id.in_(tuple(delete_query.id))
+        ).delete()
+        db.commit()
+    if delete_query.table == "aoi":
+        db.query(database.AOI).filter(
+            database.AOI.id.in_(tuple(delete_query.id))
+        ).delete()
+        db.commit()
+
+    return delete_query.id

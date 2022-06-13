@@ -59,14 +59,18 @@ def post_aoi(
     db: Session = Depends(database.get_db),
     user: database.User = Depends(auth.get_current_active_user),
 ):
-    created_aoi = geom.create_aoi(db=db, aoi=aoi, user=user)
-    return {"id": created_aoi.id}
+    if aoi.id is not None:
+        _aoi = geom.update_aoi(db=db, aoi=aoi, user=user)
+    else:
+        _aoi = geom.create_aoi(db=db, aoi=aoi, user=user)
+
+    return {"id": _aoi.id}
 
 
 @router.get(
     "/aoi/",
     dependencies=requires_auth,
-    response_model=Union[schemas.Feature, schemas.FeatureCollection],
+    response_model=schemas.FeatureCollection,
 )
 def get_aoi(
     aoi_query: schemas.AOIQuery,
@@ -80,16 +84,20 @@ def get_aoi(
     "/events/", dependencies=requires_admin, status_code=status.HTTP_201_CREATED
 )
 def post_events(
-    events: Union[schemas.EventCreate, List[schemas.EventCreate]],
+    events: Union[
+        schemas.EventCreate,
+        schemas.Event,
+        List[Union[schemas.EventCreate, schemas.Event]],
+    ],
     db: Session = Depends(database.get_db),
     user: database.User = Depends(auth.get_current_active_user),
 ):
-    if isinstance(events, schemas.EventCreate):
+    if not isinstance(events, list):
         events = [events]
 
-    created_events = geom.create_events(events=events, db=db, user=user)
+    _events = geom.maybe_create_events(events=events, db=db, user=user)
 
-    return {"id": [event.id for event in created_events]}
+    return {"id": [event.id for event in _events]}
 
 
 @router.get(
@@ -101,3 +109,14 @@ def get_events(
     user: database.User = Depends(auth.get_current_active_user),
 ):
     return geom.get_events(event_query=event_query, db=db, user=user)
+
+
+@router.post("/delete/", dependencies=requires_admin, status_code=200)
+def delete_objs(
+    delete_query: schemas.DeleteObj,
+    db: Session = Depends(database.get_db),
+    user: database.User = Depends(auth.get_current_active_user),
+):
+    return {
+        "dropped ids": geom.delete_objects(delete_query=delete_query, db=db, user=user)
+    }

@@ -61,7 +61,7 @@ class Feature(BaseModel):
     type: str = Field("Feature", const=True)
     geometry: Geometry
     properties: Optional[Props]
-    id: Optional[str]
+    id: Optional[str]  # id corresponding to db entry. If present, updates db entry.
     bbox: Optional[BBox]
     labels: Optional[List[str]]
 
@@ -111,9 +111,15 @@ class EventQueryReturn(BaseModel):
 
 class EventQuery(BaseModel):
     aoi_id: Union[int, List[int]]
+    id: Optional[Union[int, List[int]]]
     labels: Optional[List[str]]
     start_datetime: date
     end_datetime: date
     keyed_values: Optional[dict]
     limit: Optional[int]
     page: Optional[int]
+
+
+class DeleteObj(BaseModel):
+    id: Union[int, List[int]]
+    table: str
