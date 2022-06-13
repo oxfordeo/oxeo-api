@@ -78,7 +78,7 @@ class Asset(Base):
     geometry = Column(Geometry(geometry_type="Point", srid=4326))
     labels = Column(ARRAY(ENUM(*VALID_ASSET_LABELS, name="AssetLabel")), index=True)
     properties = Column(JSONB)
-    aoi = relationship("Company", secondary="asset_company_link")
+    company = relationship("Company", secondary="asset_company_link")
 
 
 class Company(Base):
@@ -86,6 +86,7 @@ class Company(Base):
     __tablename__ = "companies"
 
     id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True)
     assets = relationship("Asset", secondary="asset_company_link")
     properties = Column(JSONB)
 

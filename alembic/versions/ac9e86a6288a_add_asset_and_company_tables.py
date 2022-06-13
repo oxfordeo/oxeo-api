@@ -1,8 +1,8 @@
 """Add Asset and Company tables
 
-Revision ID: a8b7a74d3424
+Revision ID: ac9e86a6288a
 Revises: daa00d9bc7ec
-Create Date: 2022-06-13 15:25:31.708350
+Create Date: 2022-06-13 15:57:35.236487
 
 """
 import geoalchemy2
@@ -12,7 +12,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = "a8b7a74d3424"
+revision = "ac9e86a6288a"
 down_revision = "daa00d9bc7ec"
 branch_labels = None
 depends_on = None
@@ -44,14 +44,16 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     # op.create_index('idx_assets_geometry', 'assets',
-    # ['geometry'], unique=False, postgresql_using='gist', postgresql_ops={})
+    #    ['geometry'], unique=False, postgresql_using='gist', postgresql_ops={})
     op.create_index(op.f("ix_assets_id"), "assets", ["id"], unique=False)
     op.create_index(op.f("ix_assets_labels"), "assets", ["labels"], unique=False)
     op.create_table(
         "companies",
         sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("name", sa.String(), nullable=True),
         sa.Column("properties", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
         sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("name"),
     )
     op.create_index(op.f("ix_companies_id"), "companies", ["id"], unique=False)
     op.create_table(
@@ -80,11 +82,12 @@ def downgrade() -> None:
     # sa.Column('auth_name', sa.VARCHAR(length=256),
     #    autoincrement=False, nullable=True),
     # sa.Column('auth_srid', sa.INTEGER(), autoincrement=False, nullable=True),
-    # sa.Column('srtext', sa.VARCHAR(length=2048), autoincrement=False, nullable=True),
+    # sa.Column('srtext', sa.VARCHAR(length=2048),
+    #    autoincrement=False, nullable=True),
     # sa.Column('proj4text', sa.VARCHAR(length=2048),
-    #   autoincrement=False, nullable=True),
+    #    autoincrement=False, nullable=True),
     # sa.CheckConstraint('(srid > 0) AND (srid <= 998999)',
-    #   name='spatial_ref_sys_srid_check'),
+    #    name='spatial_ref_sys_srid_check'),
     # sa.PrimaryKeyConstraint('srid', name='spatial_ref_sys_pkey')
     # )
     op.drop_table("asset_company_link")
