@@ -33,7 +33,7 @@ events = [
         ).isoformat()[0:10],
         keyed_values={"value": random.random()},
     )
-    for ii in range(500)
+    for ii in range(50)
 ]
 
 # test for checking label

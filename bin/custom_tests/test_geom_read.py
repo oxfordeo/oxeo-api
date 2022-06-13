@@ -60,7 +60,7 @@ itemurl = "http://0.0.0.0:8081/aoi/"
 r = requests.get(itemurl, headers=headers, json=query)
 
 print("SINGLE ID", r.status_code)
-print(gpd.GeoDataFrame.from_features([json.loads(r.text)]))
+print(gpd.GeoDataFrame.from_features(json.loads(r.text)))
 
 
 # multiple id
