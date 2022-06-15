@@ -4,7 +4,7 @@
 from datetime import date
 
 # data models for pydantic
-from typing import List, Optional, Tuple, TypeVar, Union
+from typing import Dict, List, Optional, Tuple, TypeVar, Union
 
 from pydantic import BaseModel, Field, conlist
 
@@ -49,7 +49,7 @@ Props = TypeVar("Props", bound=dict)
 
 class Geometry(BaseModel):
     type: str = Field(..., example="Polygon")
-    coordinates: Union[PolygonCoords, MultiPolygonCoords] = Field(
+    coordinates: Union[PolygonCoords, MultiPolygonCoords, Point] = Field(
         ..., example=[[[1, 3], [2, 2], [4, 4], [1, 3]]]
     )
 
@@ -61,7 +61,7 @@ class Feature(BaseModel):
     type: str = Field("Feature", const=True)
     geometry: Geometry
     properties: Optional[Props]
-    id: Optional[str]
+    id: Optional[str]  # id corresponding to db entry. If present, updates db entry.
     bbox: Optional[BBox]
     labels: Optional[List[str]]
 
@@ -111,9 +111,65 @@ class EventQueryReturn(BaseModel):
 
 class EventQuery(BaseModel):
     aoi_id: Union[int, List[int]]
+    id: Optional[Union[int, List[int]]]
     labels: Optional[List[str]]
     start_datetime: date
     end_datetime: date
     keyed_values: Optional[dict]
     limit: Optional[int]
     page: Optional[int]
+
+
+class AssetCreate(BaseModel):
+    geometry: Geometry
+    name: str
+    labels: Union[str, List[str]]
+    properties: dict
+    company_weights: Dict[str, int]
+
+
+class Asset(AssetCreate):
+    id: int
+
+
+class AssetQuery(BaseModel):
+    id: Optional[Union[int, List[int]]]
+    name: Optional[str]
+    company_name: Optional[str]
+    geometry: Optional[Geometry]
+    labels: Optional[List[str]]
+    keyed_values: Optional[dict]
+    limit: Optional[int]
+    page: Optional[int]
+
+
+class AssetQueryReturn(BaseModel):
+    assets: List[Asset]
+    next_page: Optional[int]
+
+
+class CompanyCreate(BaseModel):
+    name: str
+    properties: Optional[dict]
+
+
+class Company(CompanyCreate):
+    id: int
+
+
+class CompanyQuery(BaseModel):
+    id: Optional[Union[List[int], int]]
+    name: Optional[str]
+    keyed_values: Optional[dict]
+    limit: Optional[int]
+    page: Optional[int]
+
+
+class CompanyQueryReturn(BaseModel):
+    companies: List[Company]
+    next_page: Optional[int]
+
+
+class DeleteObj(BaseModel):
+    id: Union[int, List[int]]
+    table: str

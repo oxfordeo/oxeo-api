@@ -9,15 +9,8 @@ from sqlalchemy.sql import or_
 from oxeo.api.models import database, schemas
 
 
-def geom2pg(geom: schemas.Geometry):
-    shapely_geom = geometry.shape(geom.__dict__)
-    if shapely_geom.type == "Polygon":
-        shapely_geom = geometry.MultiPolygon([shapely_geom])
-    elif shapely_geom.type != "MultiPolygon":
-        raise HTTPException(
-            status_code=400,
-            detail="Supplied query geometry must be a polygon or multipolygon.",
-        )
+def geom2pg(geom: schemas.Geometry, allowed_types: List[str]):
+    shapely_geom = schema2shp(geom=geom, allowed_types=allowed_types)
     pg_geom = from_shape(shapely_geom, srid=4326)
     return pg_geom
 
@@ -30,17 +23,25 @@ def pg2gj(pg_geom):
     return geometry.mapping(to_shape(pg_geom))
 
 
-def preprocess_geometry(geom: schemas.Geometry):
+def schema2shp(geom: schemas.Geometry, allowed_types: List[str]):
     shapely_geom = geometry.shape(geom.__dict__)
 
+    if shapely_geom.type not in allowed_types:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Supplied geometry must one of f{allowed_types}.",
+        )
+
     if shapely_geom.type == "Polygon":
-        return geometry.MultiPolygon([shapely_geom]).wkt
+        return geometry.MultiPolygon([shapely_geom])
     elif shapely_geom.type == "MultiPolygon":
-        return shapely_geom.wkt
+        return shapely_geom
+    elif shapely_geom.type == "Point":
+        return shapely_geom
     else:
         raise HTTPException(
             status_code=400,
-            detail="Supplied geometry must be a polygon or multipolygon.",
+            detail=f"Geometry type {shapely_geom.type} not supported",
         )
 
 
@@ -58,8 +59,6 @@ def check_aoi(aoi: schemas.Feature):
         aoi.properties = {}
 
     # if aoi is supplied with an id or bbox update them in properties.
-    if aoi.id is not None:
-        aoi.properties["_id"] = aoi.id
     if aoi.bbox is not None:
         aoi.properties["bbox"] = aoi.bbox
 
@@ -89,13 +88,45 @@ def check_aoi(aoi: schemas.Feature):
     return aoi
 
 
+def update_aoi(db: Session, aoi: schemas.Feature, user: schemas.User):
+
+    aoi = check_aoi(aoi)
+
+    # update the db
+    db_aoi = db.query(database.AOI).filter(database.AOI.id == aoi.id).first()
+
+    # check labels
+    if db_aoi.labels != aoi.labels:
+        db_aoi.labels = aoi.labels
+
+    # check properties
+    if db_aoi.properties != aoi.properties:
+        db_aoi.properties = aoi.properties
+
+    # check geometry
+    if pg2shapely(db_aoi.geometry) != schema2shp(
+        aoi.geometry, allowed_types=["Polygon", "MultiPolygon"]
+    ):
+        db_aoi.geometry = schema2shp(
+            aoi.geometry, allowed_types=["Polygon", "MultiPolygon"]
+        ).wkt
+
+    # commit
+    db.commit()
+    db.refresh(db_aoi)
+
+    return db_aoi
+
+
 def create_aoi(db: Session, aoi: schemas.Feature, user: schemas.User):
 
     aoi = check_aoi(aoi)
 
     # do stuff here. put that db aoi in the db
     db_aoi = database.AOI(
-        geometry=preprocess_geometry(aoi.geometry),
+        geometry=schema2shp(
+            aoi.geometry, allowed_types=["Polygon", "MultiPolygon"]
+        ).wkt,
         labels=aoi.labels,
         properties=aoi.properties,
     )
@@ -144,6 +175,9 @@ def get_aoi(aoi_query: schemas.AOIQuery, db: Session, user: schemas.User):
     if aoi_query.limit is None:
         aoi_query.limit = 1000
 
+    if isinstance(aoi_query.id, int):
+        aoi_query.id = enforce_list(aoi_query.id)
+
     Q = db.query(database.AOI)
 
     # if a single id is given, just get that id
@@ -171,7 +205,11 @@ def get_aoi(aoi_query: schemas.AOIQuery, db: Session, user: schemas.User):
 
     # do geometry if it's available
     if aoi_query.geometry is not None:
-        Q = Q.filter(database.AOI.geometry.ST_Intersects(geom2pg(aoi_query.geometry)))
+        Q = Q.filter(
+            database.AOI.geometry.ST_Intersects(
+                geom2pg(aoi_query.geometry, allowed_types=["Polygon", "MultiPolygon"])
+            )
+        )
 
     # do key-value pairs
     if aoi_query.keyed_values is not None:
@@ -194,23 +232,41 @@ def get_aoi(aoi_query: schemas.AOIQuery, db: Session, user: schemas.User):
     return postprocess_aois(results[0 : aoi_query.limit], next_page)  # noqa
 
 
+def check_not_id(event):
+    if isinstance(event, schemas.EventCreate) and not isinstance(event, schemas.Event):
+        return True
+    else:
+        return False
+
+
+def update_event(event: schemas.Event, db: Session, user: schemas.User):
+    db_event = db.query(database.Event).filter(database.Event.id == event.id).first()
+
+    if db_event.labels != enforce_list(event.labels):
+        db_event.labels = enforce_list(event.labels)
+    if db_event.aoi_id != event.aoi_id:
+        db_event.aoi_id = event.aoi_id
+    if db_event.datetime != event.datetime:
+        db_event.datetime = event.datetime
+    if db_event.properties != event.keyed_values:
+        db_event.properties = event.keyed_values
+
+    db.commit()
+    db.refresh(db_event)
+
+    return db_event
+
+
+def update_events(events: List[schemas.Event], db: Session, user: schemas.User):
+
+    db_events = [update_event(event, db, user) for event in events]
+
+    return db_events
+
+
 def create_events(events: List[schemas.EventCreate], db: Session, user: schemas.User):
-
-    # do stuff here. put that db event in the db
-    """
-    for event in events:
-        db_event = database.Events(
-            labels = enforce_list(event.labels),
-            aoi_id = event.aoi_id,
-            datetime = event.datetime,
-            properties = event.keyed_values
-        )
-
-        db.add(db_event)
-        db.commit()
-    """
     db_events = [
-        database.Events(
+        database.Event(
             labels=enforce_list(event.labels),
             aoi_id=event.aoi_id,
             datetime=event.datetime,
@@ -227,7 +283,7 @@ def create_events(events: List[schemas.EventCreate], db: Session, user: schemas.
     return db_events
 
 
-def postprocess_events(db_events_list: List[database.Events], next_page: int):
+def postprocess_events(db_events_list: List[database.Event], next_page: int):
 
     events_list = [
         schemas.Event(
@@ -258,20 +314,25 @@ def get_events(event_query: schemas.EventQuery, db: Session, user: schemas.User)
     if event_query.limit is None:
         event_query.limit = 10000
 
-    Q = db.query(database.Events)
+    Q = db.query(database.Event)
 
     # if single aoi_id is given, wrap it in list
     if isinstance(event_query.aoi_id, int):
         event_query.aoi_id = [event_query.aoi_id]
+    if isinstance(event_query.id, int):
+        event_query.id = [event_query.id]
 
-    Q = Q.filter(database.Events.aoi_id.in_(tuple(event_query.aoi_id)))
+    if event_query.id is not None:
+        Q = Q.filter(database.Event.id.in_(tuple(event_query.id)))
+
+    Q = Q.filter(database.Event.aoi_id.in_(tuple(event_query.aoi_id)))
 
     # do labels
     if event_query.labels is not None:
 
         # OR condition
         conditions = [
-            database.Events.labels.contains(f"{{{label}}}")
+            database.Event.labels.contains(f"{{{label}}}")
             for label in event_query.labels
         ]
         Q = Q.filter(or_(*conditions))
@@ -280,13 +341,13 @@ def get_events(event_query: schemas.EventQuery, db: Session, user: schemas.User)
     if event_query.keyed_values is not None:
         for key, value in event_query.keyed_values.items():
             if value is not None:
-                Q = Q.filter(database.Events.properties[key].as_string() == value)
+                Q = Q.filter(database.Event.properties[key].as_string() == value)
             else:
-                Q = Q.filter(database.Events.properties.has_key(key))  # noqa
+                Q = Q.filter(database.Event.properties.has_key(key))  # noqa
 
     # do dates
-    Q = Q.filter(database.Events.datetime >= event_query.start_datetime)
-    Q = Q.filter(database.Events.datetime <= event_query.end_datetime)
+    Q = Q.filter(database.Event.datetime >= event_query.start_datetime)
+    Q = Q.filter(database.Event.datetime <= event_query.end_datetime)
 
     # do pagination
     Q = Q.offset(event_query.page * event_query.limit).limit(event_query.limit + 1)
@@ -298,3 +359,50 @@ def get_events(event_query: schemas.EventQuery, db: Session, user: schemas.User)
         next_page = None
 
     return postprocess_events(results[0 : event_query.limit], next_page)  # noqa
+
+
+def delete_objects(delete_query: schemas.DeleteObj, db: Session, user: schemas.User):
+
+    if delete_query.table not in ["event", "aoi", "asset", "company"]:
+        raise HTTPException(
+            status_code=400,
+            detail="Field `Table` must be one of [event,aoi,asset,company]",
+        )
+    delete_query.id = enforce_list(delete_query.id)
+
+    if delete_query.table == "events":
+        db.query(database.Event).filter(
+            database.Event.id.in_(tuple(delete_query.id))
+        ).delete()
+        db.commit()
+    if delete_query.table == "aoi":
+        db.query(database.AOI).filter(
+            database.AOI.id.in_(tuple(delete_query.id))
+        ).delete()
+        db.commit()
+    if delete_query.table == "asset":
+        db_asset = (
+            db.query(database.Asset)
+            .filter(database.Asset.id.in_(tuple(delete_query.id)))
+            .first()
+        )
+        for company in db_asset.companies:
+            company.assets.remove(db_asset)
+
+        db.delete(db_asset)
+
+        db.commit()
+
+    if delete_query.table == "company":
+        db_company = (
+            db.query(database.Company)
+            .filter(database.Company.id.in_(tuple(delete_query.id)))
+            .first()
+        )
+        for asset in db_company.assets:
+            asset.companies.remote(db_company)
+
+        db.delete(db_company)
+        db.commit()
+
+    return delete_query.id

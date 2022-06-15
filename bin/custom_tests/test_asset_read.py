@@ -21,31 +21,33 @@ print(r.text)
 token = json.loads(r.text)["access_token"]
 
 headers = {"Authorization": f"Bearer {token}"}
+itemurl = "http://0.0.0.0:8081/assets/"
 
+print("PAGE LIMIT FAIL")
 # test limit and paging
 query = {
     "page": 0,
     "limit": 5000,
 }
 
-itemurl = "http://0.0.0.0:8081/aoi/"
 r = requests.get(itemurl, headers=headers, json=query)
 
 print(r.status_code)
 print(r.text)
 
+print("PAGE LIMIT SUCCESS")
 # test limit and paging
 query = dict(page=0, limit=5)
 
-itemurl = "http://0.0.0.0:8081/aoi/"
+
 r = requests.get(itemurl, headers=headers, json=query)
 
 print("PAGE 0", r.status_code)
+print(r.text)
 print(gpd.GeoDataFrame.from_features(json.loads(r.text)))
 
 query = dict(page=1, limit=5)
 
-itemurl = "http://0.0.0.0:8081/aoi/"
 r = requests.get(itemurl, headers=headers, json=query)
 
 print("PAGE 1", r.status_code)
@@ -53,10 +55,9 @@ print(gpd.GeoDataFrame.from_features(json.loads(r.text)))
 
 # single id
 query = dict(
-    id=11,
+    id=69,
 )
 
-itemurl = "http://0.0.0.0:8081/aoi/"
 r = requests.get(itemurl, headers=headers, json=query)
 
 print("SINGLE ID", r.status_code)
@@ -67,49 +68,36 @@ print(gpd.GeoDataFrame.from_features(json.loads(r.text)))
 query = dict(
     page=0,
     limit=3,
-    id=[5, 7, 8, 9, 11],
+    id=[60, 65, 67, 68, 69],
 )
 
-itemurl = "http://0.0.0.0:8081/aoi/"
 r = requests.get(itemurl, headers=headers, json=query)
 
 print("MULTUIPLE ID", r.status_code)
 print(gpd.GeoDataFrame.from_features(json.loads(r.text)))
 
 # labels
+print("LABELS ID")
 query = dict(
-    labels=["waterbody"],
+    labels=["mine"],
 )
 
-itemurl = "http://0.0.0.0:8081/aoi/"
 r = requests.get(itemurl, headers=headers, json=query)
-
-print("LABELS ID", r.status_code)
+print(r.status_code)
 print(gpd.GeoDataFrame.from_features(json.loads(r.text)))
 
-# labels
-query = dict(
-    labels=["waterbody", "agricultural_area"],
-)
-
-itemurl = "http://0.0.0.0:8081/aoi/"
-r = requests.get(itemurl, headers=headers, json=query)
-
-print("MULTILABEL", r.status_code)
-print(gpd.GeoDataFrame.from_features(json.loads(r.text)))
-
-
+print("GEOMETRY")
 # geometry
 shp = geometry.shape(
     {
         "type": "Polygon",
         "coordinates": [
             [
-                [31.88232421875, -23.634459770994653],
-                [31.9537353515625, -24.089096670083006],
-                [32.2119140625, -24.099125826874857],
-                [32.22564697265625, -23.647040184548587],
-                [31.88232421875, -23.634459770994653],
+                [0, 0],
+                [0, 10],
+                [10, 10],
+                [10, 0],
+                [0, 0],
             ]
         ],
     }
@@ -119,23 +107,5 @@ query = dict(geometry=geometry.mapping(shp))
 
 r = requests.get(itemurl, headers=headers, json=query)
 
-print("GEOMETRY", r.status_code)
-print(gpd.GeoDataFrame.from_features(json.loads(r.text)))
-
-# key-value pairs
-query = dict(keyed_values={"livestock": "cows"})
-
-r = requests.get(itemurl, headers=headers, json=query)
-print("key-value", r.status_code)
-print(gpd.GeoDataFrame.from_features(json.loads(r.text)))
-
-
-query = dict(keyed_values={"livestock": "cows", "crop": "maize"})
-r = requests.get(itemurl, headers=headers, json=query)
-print("MULTI key-value", r.status_code)
-print(gpd.GeoDataFrame.from_features(json.loads(r.text)))
-
-query = dict(keyed_values={"livestock": None, "crop": "maize"})
-r = requests.get(itemurl, headers=headers, json=query)
-print("MIXED key-value", r.status_code)
+print(r.status_code)
 print(gpd.GeoDataFrame.from_features(json.loads(r.text)))
