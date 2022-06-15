@@ -40,10 +40,11 @@ shp = geometry.shape(
 )
 
 # write a new AOI
-itemurl = "http://0.0.0.0:8081/aoi/"
-
+aoi_url = "http://0.0.0.0:8081/aoi/"
+update_url = "http://0.0.0.0:8081/aoi/update"
+delete_url = "http://0.0.0.0:8081/delete/"
 feature = Feature(geometry=shp, properties={"labels": "waterbody"})
-r = requests.post(itemurl, headers=headers, json=feature)
+r = requests.post(aoi_url, headers=headers, json=feature)
 
 print("WRITE NEW AOI")
 print(r.status_code)
@@ -57,7 +58,7 @@ feature = Feature(
     properties={"labels": "waterbody", "my_property": "unique_val"},
     id=_id,
 )
-r = requests.post(itemurl, headers=headers, json=feature)
+r = requests.post(update_url, headers=headers, json=feature)
 
 print("UPDATE A PROPERTY")
 print(r.status_code)
@@ -65,7 +66,7 @@ print(r.text)
 
 # check it out
 query = dict(page=0, limit=5, id=_id)
-r = requests.get(itemurl, headers=headers, json=query)
+r = requests.get(aoi_url, headers=headers, json=query)
 
 print("READ THE NEW FT")
 print("PAGE 0", r.status_code)
@@ -91,20 +92,20 @@ feature = Feature(
     properties={"labels": "waterbody", "my_property": "unique_val"},
     id=_id,
 )
-r = requests.post(itemurl, headers=headers, json=feature)
+r = requests.post(update_url, headers=headers, json=feature)
 print("UPDATE A GEOM")
 print(r.status_code)
 print(r.text)
 
 # check it out
 query = dict(page=0, limit=5, id=_id)
-r = requests.get(itemurl, headers=headers, json=query)
+r = requests.get(aoi_url, headers=headers, json=query)
 
 print("CHECK GEOM")
 print("PAGE 0", r.status_code)
 print(gpd.GeoDataFrame.from_features(json.loads(r.text)["features"]))  # single feature
 
-delete_url = "http://0.0.0.0:8081/delete/"
+
 query = dict(id=_id, table="aoi")
 r = requests.post(delete_url, headers=headers, json=query)
 
@@ -114,7 +115,7 @@ print(r.text)
 
 # check it out
 query = dict(page=0, limit=5, id=_id)
-r = requests.get(itemurl, headers=headers, json=query)
+r = requests.get(aoi_url, headers=headers, json=query)
 
 print("CHECK GEOM")
 print("PAGE 0", r.status_code)

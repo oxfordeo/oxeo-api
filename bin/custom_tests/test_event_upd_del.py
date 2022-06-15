@@ -37,8 +37,9 @@ events = [
 ]
 
 # test for checking label
-itemurl = "http://0.0.0.0:8081/events/"
-r = requests.post(itemurl, headers=headers, json=events)
+event_url = "http://0.0.0.0:8081/events/"
+update_url = "http://0.0.0.0:8081/events/update/"
+r = requests.post(event_url, headers=headers, json=events)
 
 print("MAKE NEW EVENTS")
 print(r.status_code)
@@ -55,7 +56,7 @@ query = dict(
     end_datetime="2020-07-01",
 )
 
-r = requests.get(itemurl, headers=headers, json=query)
+r = requests.get(event_url, headers=headers, json=query)
 
 print("PAGE 0", r.status_code)
 print(json.loads(r.text))
@@ -75,7 +76,7 @@ events = [
 ]
 
 print("UPDATE EVENTS")
-r = requests.post(itemurl, headers=headers, json=events)
+r = requests.post(update_url, headers=headers, json=events[0])
 print(r.status_code)
 print(r.text)
 
@@ -88,14 +89,14 @@ query = dict(
     end_datetime="2020-07-01",
 )
 
-r = requests.get(itemurl, headers=headers, json=query)
+r = requests.get(event_url, headers=headers, json=query)
 
 print("PAGE 0", r.status_code)
 print(json.loads(r.text))
 
 print("DELETE EVENTS")
 delete_url = "http://0.0.0.0:8081/delete/"
-query = dict(id=_ids, table="events")
+query = dict(id=_ids, table="event")
 r = requests.post(delete_url, headers=headers, json=query)
 print(r.status_code)
 print(r.text)
@@ -109,7 +110,7 @@ query = dict(
     end_datetime="2020-07-01",
 )
 
-r = requests.get(itemurl, headers=headers, json=query)
+r = requests.get(event_url, headers=headers, json=query)
 
 print("PAGE 0", r.status_code)
 print(json.loads(r.text))
