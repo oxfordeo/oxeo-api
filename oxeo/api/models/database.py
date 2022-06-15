@@ -57,7 +57,7 @@ class AOI(Base):
     properties = Column(JSONB)
 
 
-class Events(Base):
+class Event(Base):
 
     __tablename__ = "events"
 
@@ -79,7 +79,9 @@ class Asset(Base):
     name = Column(String, unique=True)
     labels = Column(ARRAY(ENUM(*VALID_ASSET_LABELS, name="AssetLabel")), index=True)
     properties = Column(JSONB)
-    company = relationship("Company", secondary="asset_company_link")
+    companies = relationship(
+        "Company", secondary="assets_companies_link", back_populates="assets"
+    )
 
 
 class Company(Base):
@@ -88,13 +90,16 @@ class Company(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True)
-    assets = relationship("Asset", secondary="asset_company_link")
+    assets = relationship(
+        "Asset", secondary="assets_companies_link", back_populates="companies"
+    )
     properties = Column(JSONB)
 
 
 class AssetCompany(Base):
 
-    __tablename__ = "asset_company_link"
+    __tablename__ = "assets_companies_link"
     company_id = Column(Integer, ForeignKey("companies.id"), primary_key=True)
     asset_id = Column(Integer, ForeignKey("assets.id"), primary_key=True)
+    equity = Column(Integer)
     properties = Column(JSONB)  # ownership percentages and such
