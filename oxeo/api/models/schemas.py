@@ -37,6 +37,12 @@ class User(UserBase):
         orm_mode = True
 
 
+class ResetPassword(BaseModel):
+    reset_token: str
+    new_password: str
+    confirm_password: str
+
+
 # Geometry
 
 Point = Tuple[float, float]

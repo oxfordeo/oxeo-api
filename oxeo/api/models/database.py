@@ -2,7 +2,16 @@
 import os
 
 from geoalchemy2 import Geometry
-from sqlalchemy import Boolean, Column, Date, ForeignKey, Integer, String, create_engine
+from sqlalchemy import (
+    Boolean,
+    Column,
+    Date,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    create_engine,
+)
 from sqlalchemy.dialects.postgresql import ARRAY, ENUM, JSONB
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
@@ -45,6 +54,16 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     role = Column(ENUM(*VALID_ROLES, name="role"))
     data = Column(JSONB)
+
+
+class PasswordResetToken(Base):
+    __tablename__ = "password_reset_tokens"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, index=True)
+    reset_token = Column(String)
+    status = Column(Boolean, default=False)
+    create_datetime = Column(DateTime)
 
 
 class AOI(Base):
