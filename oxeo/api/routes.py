@@ -49,7 +49,7 @@ async def forgot_password(
     # generate a reset token
     db_reset_token = C.auth.create_pwreset_token(db, db_user)
 
-    return C.auth.email_pw_reset(db_reset_token, user)
+    return await C.auth.email_pw_reset(db_reset_token, user)
 
 
 @router.post("/auth/reset_password", status_code=200)
@@ -64,7 +64,7 @@ async def reset_password(
 
     # now use it to actually reset the password
     db_user = C.auth.get_user(db, db_token.email)
-    db_user = C.auth.reset_password(db, reset_password, db_user)
+    db_user = C.auth.reset_password(db, reset_password, db_user, db_token)
 
     return {"email": db_user.email}
 

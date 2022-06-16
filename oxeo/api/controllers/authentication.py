@@ -87,12 +87,18 @@ def get_reset_token(db: Session, reset_token: schemas.ResetPassword):
 
 
 def reset_password(
-    db: Session, reset_token: schemas.ResetPassword, db_user: database.User
+    db: Session,
+    reset_token: schemas.ResetPassword,
+    db_user: database.User,
+    db_token: database.PasswordResetToken,
 ):
     hashed_password = get_password_hash(reset_token.new_password)
     db_user.hashed_password = hashed_password
     db.commit()
     db.refresh(db_user)
+
+    db_token.status = False
+    db.commit()
 
     return db_user
 
@@ -125,30 +131,33 @@ def create_pwreset_token(db: Session, user: database.User):
     return db_token
 
 
-def email_pw_reset(token: database.PasswordResetToken, user: database.User):
+async def email_pw_reset(token: database.PasswordResetToken, user: database.User):
 
     fm = FastMail(mail_cfg)
 
-    message = rf"""
-        <!DOCTYPE html>
-        <html>
-        <title>Reset Password</title>
-        <body>
-        <div style="width:100%;dont-family: monospace;">
-            <h1> Hi {token.email}!</h1>
-            <p>Someone has requested a link to reset your password. If you received
-            this, you can change your password with this token: {token.reset_token}.</p>
-            <p> Use this token to GET https://api.oxfordeo.com/auth/change_password/
-            with the following json: \{'token':'{token.reset_token}',
-            password:'<your-new-password>',
-            'confirm_password':'<your-new-password>'\}.</p>
-            <p>If you didn't request this, you can ignore this email.</p>
-            <p>Your password won't change until you access the link above
-            and submit a new one.</p>
-        </div>
-        </body>
-        </html>
-        """
+    message = "".join(
+        [
+            "<!DOCTYPE html>",
+            "<html>",
+            "<title>Reset Password</title>",
+            "<body>",
+            '<div style="width:100%;font-family: monospace;">',
+            f"<h1> Hi {token.email}!</h1>",
+            "<p>Someone has requested a link to reset your password. If you requested ",
+            "this, you can change your password with this token: ",
+            f"{token.reset_token}.</p>",
+            "<p> Use this token to GET https://api.oxfordeo.com/auth/change_password/ ",
+            f"with the following json: {{'reset_token':'{token.reset_token}',",
+            "'new_password':'YOUR-NEW-PASSWORD',",
+            "'confirm_password':'YOUR-NEW-PASSWORD'}.</p>",
+            "<p>If you didn't request this, you can ignore this email.</p>",
+            "<p>Your password won't change until you access the link above ",
+            "and submit a new one.</p>",
+            "</div>",
+            "</body>",
+            "</html>",
+        ]
+    )
 
     message = MessageSchema(
         subject="OxEO Password Reset",
@@ -158,7 +167,7 @@ def email_pw_reset(token: database.PasswordResetToken, user: database.User):
     )
 
     fm = FastMail(mail_cfg)
-    fm.send_message(message)
+    await fm.send_message(message)
 
     return f"Password reset instructions sent to {token.email}!"
 
