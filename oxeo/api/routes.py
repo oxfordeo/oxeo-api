@@ -3,7 +3,6 @@ from typing import List, Union
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
-from loguru import logger
 from sqlalchemy.orm import Session
 
 import oxeo.api.controllers as C
@@ -21,10 +20,7 @@ async def login_for_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(database.get_db),
 ):
-    logger.info("Hello! I made it this far")
-    logger.info(f"username: {form_data.username}, pw: {form_data.password}")
     user = C.auth.authenticate_user(db, form_data.username, form_data.password)
-    logger.info(f"Got user: {user}")
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -32,14 +28,45 @@ async def login_for_access_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
     access_token_expires = timedelta(minutes=10)
-    logger.info("Now Iv made it here!")
 
     access_token = C.auth.create_access_token(
         data={"sub": user.email}, expires_delta=access_token_expires
     )
 
-    logger.info("Now Im alomost done")
     return {"access_token": access_token, "token_type": "bearer"}
+
+
+@router.post("/auth/forgot_password", status_code=200)
+async def forgot_password(
+    user: schemas.UserBase,
+    db: Session = Depends(database.get_db),
+):
+    # check that user exists
+    db_user = C.auth.get_user(db, user.email)
+    if not db_user:
+        raise HTTPException(status_code=400, detail="User not found.")
+
+    # generate a reset token
+    db_reset_token = C.auth.create_pwreset_token(db, db_user)
+
+    return await C.auth.email_pw_reset(db_reset_token, user)
+
+
+@router.post("/auth/reset_password", status_code=200)
+async def reset_password(
+    reset_password: schemas.ResetPassword, db: Session = Depends(database.get_db)
+):
+
+    if reset_password.new_password != reset_password.confirm_password:
+        raise HTTPException(status_code=400, detail="Passwords don't match!")
+
+    db_token = C.auth.get_reset_token(db, reset_password)
+
+    # now use it to actually reset the password
+    db_user = C.auth.get_user(db, db_token.email)
+    db_user = C.auth.reset_password(db, reset_password, db_user, db_token)
+
+    return {"email": db_user.email}
 
 
 @router.post("/users/", dependencies=requires_admin, response_model=schemas.User)
