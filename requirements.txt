@@ -16,5 +16,4 @@ loguru
 psycopg2-binary
 python-multipart
 requests
-uuid
 fastapi-mail
