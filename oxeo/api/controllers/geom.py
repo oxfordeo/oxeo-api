@@ -142,6 +142,7 @@ def _postprocess_aoi(aoi: database.AOI) -> schemas.Feature:
 
     properties = aoi.properties
     properties["labels"] = aoi.labels
+    properties["aoi_id"] = aoi.id
     geometry = schemas.Geometry(**pg2gj(aoi.geometry))
 
     return schemas.Feature(
