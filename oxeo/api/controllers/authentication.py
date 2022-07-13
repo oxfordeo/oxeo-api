@@ -78,10 +78,10 @@ def get_reset_token(db: Session, reset_token: schemas.ResetPassword):
     if db_token is None:
         raise HTTPException(status_code=400, detail="No valid tokens found!")
 
-    if db_token.create_datetime < datetime.now() - timedelta(hours=24):
+    if db_token.create_datetime < datetime.now() - timedelta(hours=72):
         raise HTTPException(
             status_code=400,
-            detail="Password reset token expired. Tokens are valid 24 hours.",
+            detail="Password reset token expired. Tokens are valid 72 hours.",
         )
 
     return db_token
@@ -147,7 +147,7 @@ async def email_pw_reset(token: database.PasswordResetToken, user: database.User
             "<p>Someone has requested a link to reset your password. If you requested ",
             "this, you can change your password with this token: ",
             f"{token.reset_token}.</p>",
-            "<p> Use this token to GET https://api.oxfordeo.com/auth/change_password/ ",
+            "<p> Use this token to POST https://api.oxfordeo.com/auth/reset_password/ ",
             f"with the following json: {{'reset_token':'{token.reset_token}',",
             "'new_password':'YOUR-NEW-PASSWORD',",
             "'confirm_password':'YOUR-NEW-PASSWORD'}.</p>",
