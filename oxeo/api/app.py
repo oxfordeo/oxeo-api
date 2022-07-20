@@ -4,8 +4,7 @@ from loguru import logger
 from mangum import Mangum
 
 from oxeo.api import routes
-
-description = open("oxeo/api/description.md").read()
+from oxeo.api.description import description
 
 tags_metadata = [
     {

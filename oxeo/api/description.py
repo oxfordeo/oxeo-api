@@ -1,3 +1,4 @@
+description = """
 The OxEO API allows you to access the latest water related risk data. 🛰️🌊🌐
 
 ## Authorisation
@@ -56,3 +57,4 @@ Companies have no geometry or label, only key-value properties.
 </br></br>
 
 **Note**: All POST routes apart from password resets require administrator privileges.
+"""
