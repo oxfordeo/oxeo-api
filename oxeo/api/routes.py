@@ -15,7 +15,7 @@ admin_checker = C.auth.RoleChecker(["admin"])
 requires_admin = [Depends(C.auth.get_current_active_user), Depends(admin_checker)]
 
 
-@router.post("/auth/token", response_model=schemas.Token)
+@router.post("/auth/token", response_model=schemas.Token, tags=["Authorisation"])
 async def login_for_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(database.get_db),
@@ -36,7 +36,7 @@ async def login_for_access_token(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-@router.post("/auth/forgot_password", status_code=200)
+@router.post("/auth/forgot_password", status_code=200, tags=["Authorisation"])
 async def forgot_password(
     user: schemas.UserBase,
     db: Session = Depends(database.get_db),
@@ -52,7 +52,7 @@ async def forgot_password(
     return await C.auth.email_pw_reset(db_reset_token, user)
 
 
-@router.post("/auth/reset_password", status_code=200)
+@router.post("/auth/reset_password", status_code=200, tags=["Authorisation"])
 async def reset_password(
     reset_password: schemas.ResetPassword, db: Session = Depends(database.get_db)
 ):
@@ -69,7 +69,12 @@ async def reset_password(
     return {"email": db_user.email}
 
 
-@router.post("/users/", dependencies=requires_admin, response_model=schemas.User)
+@router.post(
+    "/users/",
+    dependencies=requires_admin,
+    response_model=schemas.User,
+    tags=["Authorisation"],
+)
 def create_user(user: schemas.UserCreate, db: Session = Depends(database.get_db)):
     db_user = C.auth.get_user(db, email=user.email)
     if db_user:
@@ -77,7 +82,12 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(database.get_db)
     return C.auth.create_user(db=db, user=user, role="user")
 
 
-@router.get("/users/", dependencies=requires_auth, response_model=schemas.User)
+@router.get(
+    "/users/",
+    dependencies=requires_auth,
+    response_model=schemas.User,
+    tags=["Authorisation"],
+)
 def read_users(
     db: Session = Depends(database.get_db),
     user: database.User = Depends(C.auth.get_current_active_user),
@@ -87,7 +97,12 @@ def read_users(
     return user
 
 
-@router.post("/aoi/", dependencies=requires_admin, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/aoi/",
+    dependencies=requires_admin,
+    status_code=status.HTTP_201_CREATED,
+    tags=["AOIs"],
+)
 def post_aoi(
     aoi: schemas.Feature,
     db: Session = Depends(database.get_db),
@@ -99,7 +114,10 @@ def post_aoi(
 
 
 @router.post(
-    "/aoi/update/", dependencies=requires_admin, status_code=status.HTTP_201_CREATED
+    "/aoi/update/",
+    dependencies=requires_admin,
+    status_code=status.HTTP_201_CREATED,
+    tags=["AOIs"],
 )
 def update_aoi(
     aoi: schemas.Feature,
@@ -115,6 +133,7 @@ def update_aoi(
     "/aoi/",
     dependencies=requires_auth,
     response_model=schemas.FeatureCollection,
+    tags=["AOIs"],
 )
 def get_aoi(
     db: Session = Depends(database.get_db),
@@ -126,7 +145,10 @@ def get_aoi(
 
 
 @router.post(
-    "/events/", dependencies=requires_admin, status_code=status.HTTP_201_CREATED
+    "/events/",
+    dependencies=requires_admin,
+    status_code=status.HTTP_201_CREATED,
+    tags=["Events"],
 )
 def post_events(
     events: Union[
@@ -144,7 +166,10 @@ def post_events(
 
 
 @router.post(
-    "/events/update/", dependencies=requires_admin, status_code=status.HTTP_201_CREATED
+    "/events/update/",
+    dependencies=requires_admin,
+    status_code=status.HTTP_201_CREATED,
+    tags=["Events"],
 )
 def update_events(
     events: Union[
@@ -162,7 +187,10 @@ def update_events(
 
 
 @router.get(
-    "/events/", dependencies=requires_auth, response_model=schemas.EventQueryReturn
+    "/events/",
+    dependencies=requires_auth,
+    response_model=schemas.EventQueryReturn,
+    tags=["Events"],
 )
 def get_events(
     db: Session = Depends(database.get_db),
@@ -173,7 +201,7 @@ def get_events(
     return C.geom.get_events(event_query=event_query, db=db, user=user)
 
 
-@router.post("/assets/", dependencies=requires_admin, status_code=200)
+@router.post("/assets/", dependencies=requires_admin, status_code=200, tags=["Assets"])
 def post_assets(
     assets: Union[
         schemas.AssetCreate,
@@ -190,7 +218,9 @@ def post_assets(
     return {"id": [asset.id for asset in _assets]}
 
 
-@router.post("/assets/update/", dependencies=requires_admin, status_code=200)
+@router.post(
+    "/assets/update/", dependencies=requires_admin, status_code=200, tags=["Assets"]
+)
 def update_assets(
     assets: Union[
         schemas.Asset,
@@ -208,7 +238,10 @@ def update_assets(
 
 
 @router.get(
-    "/assets/", dependencies=requires_auth, response_model=schemas.FeatureCollection
+    "/assets/",
+    dependencies=requires_auth,
+    response_model=schemas.FeatureCollection,
+    tags=["Assets"],
 )
 def get_assets(
     db: Session = Depends(database.get_db),
@@ -219,7 +252,9 @@ def get_assets(
     return C.asset.get_assets(asset_query=asset_query, db=db, user=user)
 
 
-@router.post("/companies/", dependencies=requires_admin, status_code=200)
+@router.post(
+    "/companies/", dependencies=requires_admin, status_code=200, tags=["Companies"]
+)
 def post_companies(
     company_create: schemas.CompanyCreate,
     db: Session = Depends(database.get_db),
@@ -228,7 +263,12 @@ def post_companies(
     return {"id": C.asset.create_company(company_create, db, user).id}
 
 
-@router.post("/companies/update/", dependencies=requires_admin, status_code=200)
+@router.post(
+    "/companies/update/",
+    dependencies=requires_admin,
+    status_code=200,
+    tags=["Companies"],
+)
 def update_companies(
     company: schemas.Company,
     db: Session = Depends(database.get_db),
@@ -238,7 +278,10 @@ def update_companies(
 
 
 @router.get(
-    "/companies/", dependencies=requires_auth, response_model=schemas.CompanyQueryReturn
+    "/companies/",
+    dependencies=requires_auth,
+    response_model=schemas.CompanyQueryReturn,
+    tags=["Companies"],
 )
 def get_companies(
     db: Session = Depends(database.get_db),
@@ -249,7 +292,12 @@ def get_companies(
     return C.asset.get_companies(company_query, db, user)
 
 
-@router.post("/delete/", dependencies=requires_admin, status_code=200)
+@router.post(
+    "/delete/",
+    dependencies=requires_admin,
+    status_code=200,
+    tags=["AOIs", "Events", "Assets", "Companies"],
+)
 def delete_objs(
     delete_query: schemas.DeleteObj,
     db: Session = Depends(database.get_db),

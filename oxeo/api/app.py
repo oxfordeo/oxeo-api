@@ -5,7 +5,36 @@ from mangum import Mangum
 
 from oxeo.api import routes
 
-app = FastAPI()
+description = open("./oxeo/api/description.md").read()
+
+tags_metadata = [
+    {
+        "name": "Authorisation",
+        "description": "Authorisation routes manage user data.",
+    },
+    {
+        "name": "AOIs",
+        "description": "Areas-of-interest with polygonal geometries and properties.",
+    },
+    {
+        "name": "Events",
+        "description": "Timestamped key-value records associated with an AOI.",
+    },
+    {
+        "name": "Assets",
+        "description": "Real fixed-capital assets with point geometries.",
+    },
+    {
+        "name": "Companies",
+        "description": "Ultimate owners of assets.",
+    },
+]
+
+app = FastAPI(
+    title="Oxford Earth Observation - API",
+    description=description,
+    openapi_tags=tags_metadata,
+)
 app.include_router(routes.router)
 
 
