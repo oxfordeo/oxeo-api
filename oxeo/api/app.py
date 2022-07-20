@@ -5,7 +5,7 @@ from mangum import Mangum
 
 from oxeo.api import routes
 
-description = open("./oxeo/api/description.md").read()
+description = open("oxeo/api/description.md").read()
 
 tags_metadata = [
     {
