@@ -6,7 +6,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
 import oxeo.api.controllers as C
-from oxeo.api.models import database, schemas
+from oxeo.api.models import bridges, database, schemas
 
 router = APIRouter()
 
@@ -117,10 +117,11 @@ def update_aoi(
     response_model=schemas.FeatureCollection,
 )
 def get_aoi(
-    aoi_query: schemas.AOIQuery,
     db: Session = Depends(database.get_db),
     user: database.User = Depends(C.auth.get_current_active_user),
+    aoi_query: schemas.AOIQuery = Depends(bridges.to_aoiquery),
 ):
+
     return C.geom.get_aoi(aoi_query=aoi_query, db=db, user=user)
 
 
@@ -164,10 +165,11 @@ def update_events(
     "/events/", dependencies=requires_auth, response_model=schemas.EventQueryReturn
 )
 def get_events(
-    event_query: schemas.EventQuery,
     db: Session = Depends(database.get_db),
     user: database.User = Depends(C.auth.get_current_active_user),
+    event_query: schemas.EventQuery = Depends(bridges.to_eventquery),
 ):
+
     return C.geom.get_events(event_query=event_query, db=db, user=user)
 
 
@@ -209,9 +211,9 @@ def update_assets(
     "/assets/", dependencies=requires_auth, response_model=schemas.FeatureCollection
 )
 def get_assets(
-    asset_query: schemas.AssetQuery,
     db: Session = Depends(database.get_db),
     user: database.User = Depends(C.auth.get_current_active_user),
+    asset_query: schemas.AssetQuery = Depends(bridges.to_assetquery),
 ):
 
     return C.asset.get_assets(asset_query=asset_query, db=db, user=user)
@@ -239,9 +241,9 @@ def update_companies(
     "/companies/", dependencies=requires_auth, response_model=schemas.CompanyQueryReturn
 )
 def get_companies(
-    company_query: schemas.CompanyQuery,
     db: Session = Depends(database.get_db),
     user: database.User = Depends(C.auth.get_current_active_user),
+    company_query: schemas.CompanyQuery = Depends(bridges.to_companyquery),
 ):
 
     return C.asset.get_companies(company_query, db, user)

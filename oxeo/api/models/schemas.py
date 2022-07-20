@@ -1,6 +1,5 @@
 # oxeo/api/models/data.py
 
-
 from datetime import date
 
 # data models for pydantic
@@ -9,6 +8,18 @@ from typing import Dict, List, Optional, Tuple, TypeVar, Union
 from pydantic import BaseModel, Field, conlist
 
 # Auth
+
+
+def safe_cast(val, to_type, default=None):
+
+    # cannot instantiate Union
+    def safecaster(foo: to_type):
+        return foo
+
+    try:
+        return to_type(val)
+    except (ValueError, TypeError):
+        raise TypeError
 
 
 class Token(BaseModel):
