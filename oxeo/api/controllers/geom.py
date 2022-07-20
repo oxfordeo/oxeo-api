@@ -171,10 +171,24 @@ def get_aoi(aoi_query: schemas.AOIQuery, db: Session, user: schemas.User):
         )
 
     # set the page and limit if none
-    if aoi_query.page is None:
+
+    if (
+        aoi_query.limit is None  # noqa
+        and aoi_query.page is None  # noqa
+        and aoi_query.geometry is None  # noqa
+        and aoi_query.id is None  # noqa
+        and aoi_query.keyed_values is None  # noqa
+        and aoi_query.labels is None  # noqa
+    ):
+        # open demo from docs
+        aoi_query.limit = 1
         aoi_query.page = 0
-    if aoi_query.limit is None:
-        aoi_query.limit = 1000
+
+    else:
+        if aoi_query.page is None:
+            aoi_query.page = 0
+        if aoi_query.limit is None:
+            aoi_query.limit = 1000
 
     if isinstance(aoi_query.id, int):
         aoi_query.id = enforce_list(aoi_query.id)
@@ -313,7 +327,7 @@ def get_events(event_query: schemas.EventQuery, db: Session, user: schemas.User)
     if event_query.page is None:
         event_query.page = 0
     if event_query.limit is None:
-        event_query.limit = 10000
+        event_query.limit = 20
 
     Q = db.query(database.Event)
 
