@@ -1,5 +1,7 @@
+import json
+import os
 from datetime import timedelta
-from typing import List, Union
+from typing import List, Optional, Union
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
@@ -13,6 +15,20 @@ router = APIRouter()
 requires_auth = [Depends(C.auth.get_current_active_user)]
 admin_checker = C.auth.RoleChecker(["admin"])
 requires_admin = [Depends(C.auth.get_current_active_user), Depends(admin_checker)]
+
+
+def err_msg(key, val, type_ob):
+    if key == "geometry":
+        msg = f"Parameter '{key}' could not be parsed." + "Please submit valid geojson."
+    elif type_ob is not None:
+        msg = f"Parameter '{key}' with val '{val}' not parseable to type: {type_ob}"
+    else:
+        msg = f"Parameter '{key}' not json parseable: {val}"
+
+    raise HTTPException(
+        status_code=400,
+        detail=msg,
+    )
 
 
 @router.post("/auth/token", response_model=schemas.Token, tags=["Authorisation"])
@@ -71,15 +87,36 @@ async def reset_password(
 
 @router.post(
     "/users/",
-    dependencies=requires_admin,
     response_model=schemas.User,
     tags=["Authorisation"],
 )
-def create_user(user: schemas.UserCreate, db: Session = Depends(database.get_db)):
-    db_user = C.auth.get_user(db, email=user.email)
-    if db_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    return C.auth.create_user(db=db, user=user, role="user")
+def create_user(
+    user: schemas.UserCreate,
+    db: Session = Depends(database.get_db),
+    req_user: Optional[database.User] = Depends(C.auth.maybe_get_current_active_user),
+):
+
+    print("REQ USER", req_user)
+
+    # if requesting user is admin
+    if req_user is not None:
+        print("REQ USER not None")
+        if req_user.role == "admin":
+            db_user = C.auth.get_user(db, email=user.email)
+            if db_user:
+                raise HTTPException(status_code=400, detail="Email already registered")
+            return C.auth.create_user(db=db, user=user, role="user")
+
+    # else check token
+    VALID_TOKENS = json.loads(os.environ.get("USER_TOKENS"))
+    if user.token in VALID_TOKENS:
+
+        db_user = C.auth.get_user(db, email=user.email)
+        if db_user:
+            raise HTTPException(status_code=400, detail="Email already registered")
+        return C.auth.create_user(db=db, user=user, role="user")
+    else:
+        raise HTTPException(status_code=400, detail=f"Token {user.token} not valid.")
 
 
 @router.get(
@@ -132,7 +169,7 @@ def update_aoi(
 @router.get(
     "/aoi/",
     dependencies=requires_auth,
-    response_model=schemas.FeatureCollection,
+    response_model=Union[schemas.FeatureCollection, str],
     tags=["AOIs"],
 )
 def get_aoi(

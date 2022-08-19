@@ -1,7 +1,7 @@
 import os
 import uuid
 from datetime import datetime, timedelta
-from typing import List, Union
+from typing import List, Optional, Union
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -19,6 +19,9 @@ ALGORITHM = os.environ.get("SERVER_ALGORITHM")
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
+
+optional_oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token", auto_error=False)
+
 
 # default to dummy data to pass CI
 mail_cfg = ConnectionConfig(
@@ -201,6 +204,44 @@ async def get_current_active_user(
     if not current_user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
+
+
+async def maybe_get_current_user(
+    token: Optional[str] = Depends(optional_oauth2_scheme),
+    db: Session = Depends(database.get_db),
+):
+
+    if token is None:
+        print("TOKEN NOEN")
+        return None
+    print("WE ARRIVe MAYBE")
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="User not anonymous",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            raise credentials_exception
+        token_data = schemas.TokenData(email=email)
+    except JWTError:
+        raise credentials_exception
+    user = get_user(db, email=token_data.email)
+    if user is None:
+        raise credentials_exception
+    return user
+
+
+async def maybe_get_current_active_user(
+    current_user: Optional[schemas.User] = Depends(maybe_get_current_user),
+):
+    if current_user is not None:
+        if not current_user.is_active:
+            raise HTTPException(status_code=400, detail="Inactive user")
+        return current_user
+    return None
 
 
 class RoleChecker:
