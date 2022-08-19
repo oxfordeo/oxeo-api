@@ -37,6 +37,7 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
+    token: str
 
 
 class User(UserBase):
@@ -82,6 +83,14 @@ class Feature(BaseModel):
     bbox: Optional[BBox]
     labels: Optional[List[str]]
 
+    def to_geojson(self):
+        return {
+            "type": self.type,
+            "geometry": self.geometry.__dict__,
+            "properties": self.properties,
+            "id": self.id,
+        }
+
 
 class FeatureCollection(BaseModel):
     type: str = Field("FeatureCollection", const=True)
@@ -102,12 +111,30 @@ class FeatureCollection(BaseModel):
 
 
 class AOIQuery(BaseModel):
-    id: Optional[Union[int, List[int]]]
-    geometry: Optional[Geometry]
-    labels: Optional[List[str]]
-    keyed_values: Optional[dict]
-    limit: Optional[int]
-    page: Optional[int]
+    id: Optional[Union[int, List[int]]] = Field(default=None, example=None)
+    geometry: Optional[Geometry] = Field(
+        default=None,
+        example={
+            "type": "Polygon",
+            "coordinates": [
+                [
+                    [32.7, -17.4],
+                    [32.7, -17.2],
+                    [32.4, -17.2],
+                    [32.4, -17.4],
+                    [32.7, -17.4],
+                ]
+            ],
+        },
+    )
+    labels: Optional[List[str]] = Field(default=None, example=["agricultural_area"])
+    keyed_values: Optional[dict] = Field(default=None, example=None)
+    simplify: Optional[float] = Field(default=None, example=None)
+    centroids: Optional[bool] = Field(default=None, example=None)
+    clip: Optional[bool] = Field(default=None, example=None)
+    format: Optional[str] = Field(default="GeoJSON", example="GeoJSON")
+    limit: Optional[int] = Field(default=None, example=2)
+    page: Optional[int] = Field(default=None, example=None)
 
 
 class EventCreate(BaseModel):

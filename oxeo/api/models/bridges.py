@@ -96,7 +96,7 @@ def to_eventquery(
     start_datetime: str = Query(default=..., example="2018-01-01"),
     end_datetime: str = Query(default=..., example="2018-06-30"),
     id: Optional[str] = Query(default=None, example=None),
-    labels: Optional[str] = Query(default=None, example="[ndvi]"),
+    labels: Optional[str] = Query(default=None, example="""["ndvi"]"""),
     keyed_values: Optional[str] = Query(default=None, example=None),
     limit: Optional[int] = Query(default=None, example=None),
     page: Optional[int] = Query(default=None, example=None),
@@ -161,6 +161,10 @@ def to_aoiquery(
     ),
     labels: Optional[str] = Query(default=None, example="""["agricultural_area"]"""),
     keyed_values: Optional[str] = Query(default=None, example=None),
+    simplify: Optional[float] = Query(default=None, example=None),
+    centroids: Optional[bool] = Query(default=None, example=None),
+    clip: Optional[bool] = Query(default=None, example=None),
+    format: Optional[str] = Query(default="GeoJSON", example="GeoJSON"),
     limit: Optional[int] = Query(default=None, example=2),
     page: Optional[int] = Query(default=None, example=None),
 ):
@@ -177,6 +181,9 @@ def to_aoiquery(
             Optional[dict],
         ],
     ):
+
+        print(key, val, type_ob)
+
         try:
             params[key] = json.loads(val) if val is not None else val
         except TypeError:
@@ -187,6 +194,17 @@ def to_aoiquery(
         except TypeError:
             err_msg(key, val, type_ob)
 
-    aoi_query = schemas.AOIQuery(**params, limit=limit, page=page)
+    print("PARAMS")
+    print(params)
+
+    aoi_query = schemas.AOIQuery(
+        **params,
+        simplify=simplify,
+        centroids=centroids,
+        clip=clip,
+        format=format,
+        limit=limit,
+        page=page,
+    )
 
     return aoi_query

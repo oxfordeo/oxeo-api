@@ -1,6 +1,10 @@
+import io
 from typing import List, Union
 
+import geobuf
 from fastapi import HTTPException
+from fastapi.responses import StreamingResponse
+from geoalchemy2 import functions as gis_funcs
 from geoalchemy2.shape import from_shape, to_shape
 from shapely import geometry
 from sqlalchemy.orm import Session
@@ -150,25 +154,50 @@ def _postprocess_aoi(aoi: database.AOI) -> schemas.Feature:
     )
 
 
-def postprocess_aois(aois: Union[database.AOI, List[database.AOI]], next_page: int):
-    if isinstance(aois, list):
-        return schemas.FeatureCollection(
-            type="FeatureCollection",
-            features=[_postprocess_aoi(aoi) for aoi in aois],
-            properties={"next_page": next_page},
-        )
+def postprocess_aois(
+    aois: Union[database.AOI, List[database.AOI]], next_page: int, output_format: str
+):
+    if not isinstance(aois, list):
+        aois = [aois]
+
+    fc = schemas.FeatureCollection(
+        type="FeatureCollection",
+        features=[_postprocess_aoi(aoi) for aoi in aois],
+        properties={"next_page": next_page},
+    )
+
+    if output_format == "geobuf":
+
+        # cast back to dict
+        fc = fc.__dict__
+        fc["features"] = [ft.to_geojson() for ft in fc["features"]]
+        pbf = geobuf.encode(fc)
+
+        return StreamingResponse(io.BytesIO(pbf), media_type="application/octet-stream")
     else:
-        return _postprocess_aoi(aois)
+        return fc
 
 
 def get_aoi(aoi_query: schemas.AOIQuery, db: Session, user: schemas.User):
 
     # db.query(database.Item).offset(skip).limit(limit).all()
     if aoi_query.limit is not None and aoi_query.limit > 1000:
-        raise HTTPException(
-            status_code=400,
-            detail=f"query limit '{aoi_query.limit}', max query limit is 1000.",
-        )
+        if not aoi_query.centroids:
+            raise HTTPException(
+                status_code=400,
+                detail=f"query limit '{aoi_query.limit}', max query limit is 1000.",
+            )
+        else:
+            aoi_query.limit = 50000
+
+    if aoi_query.format is not None:
+        if aoi_query.format not in ["GeoJSON", "geobuf"]:
+            raise HTTPException(
+                status_code=400,
+                detail=" 'format' must be one of ['GeoJSON','geobuf'].",
+            )
+    else:
+        aoi_query.format = "GeoJSON"
 
     # set the page and limit if none
 
@@ -237,6 +266,59 @@ def get_aoi(aoi_query: schemas.AOIQuery, db: Session, user: schemas.User):
     # do pagination
     Q = Q.offset(aoi_query.page * aoi_query.limit).limit(aoi_query.limit + 1)
 
+    if aoi_query.centroids is not None:
+
+        if aoi_query.centroids:
+            Q = Q.with_entities(
+                database.AOI.id, database.AOI.labels, database.AOI.properties
+            )
+            Q = Q.add_columns(
+                gis_funcs.ST_Centroid(database.AOI.geometry).label("geometry")
+            )
+
+    elif aoi_query.simplify is not None:
+
+        Q = Q.with_entities(
+            database.AOI.id, database.AOI.labels, database.AOI.properties
+        )
+
+        if aoi_query.clip:  # broken
+            Q = Q.add_columns(
+                gis_funcs.ST_Simplify(
+                    gis_funcs.ST_MakeValid(
+                        gis_funcs.ST_Intersection(
+                            database.AOI.geometry,
+                            geom2pg(
+                                aoi_query.geometry,
+                                allowed_types=["Polygon", "MultiPolygon"],
+                            ),
+                        ).label("geometry"),
+                    ),
+                    aoi_query.simplify,
+                ).label("geometry")
+            )
+        else:
+            Q = Q.add_columns(
+                gis_funcs.ST_Simplify(database.AOI.geometry, aoi_query.simplify).label(
+                    "geometry"
+                )
+            )
+
+    elif aoi_query.clip is not None:
+        Q = Q.with_entities(
+            database.AOI.id, database.AOI.labels, database.AOI.properties
+        )
+        Q = Q.add_columns(
+            gis_funcs.ST_MakeValid(
+                gis_funcs.ST_Intersection(
+                    database.AOI.geometry,
+                    geom2pg(
+                        aoi_query.geometry, allowed_types=["Polygon", "MultiPolygon"]
+                    ),
+                )
+            ).label("geometry")
+        )
+
     results = Q.all()
 
     if len(results) > aoi_query.limit:
@@ -244,7 +326,9 @@ def get_aoi(aoi_query: schemas.AOIQuery, db: Session, user: schemas.User):
     else:
         next_page = None
 
-    return postprocess_aois(results[0 : aoi_query.limit], next_page)  # noqa
+    return postprocess_aois(
+        results[0 : aoi_query.limit], next_page, aoi_query.format  # noqa
+    )  # noqa
 
 
 def check_not_id(event):
