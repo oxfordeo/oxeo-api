@@ -37,7 +37,7 @@ app = FastAPI(
 )
 
 origins = [
-    "http://localhost",
+    "https://dashboard.oxfordeo.com" "http://localhost",
     "http://localhost:8080",
 ]
 
