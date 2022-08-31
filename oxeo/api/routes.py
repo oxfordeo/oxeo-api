@@ -297,7 +297,6 @@ def get_forecast(
     url = "gs://oxeo-seasonal/tp"
     zx = xr.open_zarr(gcsfs.GCSMap(url))
 
-    print(bbox)
     min_x, min_y, max_x, max_y = bbox.bbox
     min_x += 180
     max_x += 180
@@ -317,7 +316,6 @@ def get_forecast(
     tp_monthly_2_cumsum = get_tp_cumsum(data, window=2)
     tp_monthly_3_cumsum = get_tp_cumsum(data, window=3)
 
-    print(ndvi_monthly.shape, tp_monthly.shape)
     ndvi_monthly = ndvi_monthly[:-1]
 
     ndvi_monthly.index = tp_monthly.index
@@ -338,9 +336,10 @@ def get_forecast(
         model.load_model(f"{os.environ['MODELS_PATH']}/model_{i+1}.json")
         models.append(model)
 
+    value_to_predict = df.values[-1].reshape(1, -1)
     preds = []
     for i in range(7):
-        preds.append(models[i].predict(df.values[-1].reshape(1, -1))[0])
+        preds.append(models[i].predict(value_to_predict)[0])
 
     return schemas.ForecastQueryReturn(forecast=list(preds))
 
