@@ -32,7 +32,13 @@ Base = declarative_base()
 
 VALID_ROLES = ("user", "admin")
 VALID_AOI_LABELS = ("waterbody", "agricultural_area", "basin", "admin_area")
-VALID_EVENT_LABELS = ("ndvi", "water_extents", "soil_moisture", "prediction")
+VALID_EVENT_LABELS = (
+    "ndvi",
+    "water_extents",
+    "soil_moisture",
+    "total_precipitation",
+    "prediction",
+)
 VALID_ASSET_LABELS = ("mine", "power_station")
 
 
