@@ -164,6 +164,14 @@ class EventQuery(BaseModel):
     page: Optional[int]
 
 
+class ForecastQuery(BaseModel):
+    bbox: Tuple[float, float, float, float]
+
+
+class ForecastQueryReturn(BaseModel):
+    forecast: List[float]
+
+
 class AssetCreate(BaseModel):
     geometry: Geometry
     name: str

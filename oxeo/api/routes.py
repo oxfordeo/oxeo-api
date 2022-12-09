@@ -109,6 +109,7 @@ def create_user(
 
     # else check token
     VALID_TOKENS = json.loads(os.environ.get("USER_TOKENS"))
+    print(type(user.token), type(VALID_TOKENS[0]), user.token in VALID_TOKENS)
     if user.token in VALID_TOKENS:
 
         db_user = C.auth.get_user(db, email=user.email)
@@ -236,6 +237,22 @@ def get_events(
 ):
 
     return C.geom.get_events(event_query=event_query, db=db, user=user)
+
+
+@router.get(
+    "/forecast/",
+    dependencies=requires_auth,
+    response_model=schemas.ForecastQueryReturn,
+    tags=["Forecast"],
+)
+def get_forecast(
+    db: Session = Depends(database.get_db),
+    user: database.User = Depends(C.auth.get_current_active_user),
+    event_query: schemas.EventQuery = Depends(bridges.to_eventquery),
+    forecast_query: schemas.ForecastQuery = Depends(bridges.to_forecastquery),
+):
+
+    return C.forecast.get_forecast(db, user, event_query, forecast_query)
 
 
 @router.post("/assets/", dependencies=requires_admin, status_code=200, tags=["Assets"])

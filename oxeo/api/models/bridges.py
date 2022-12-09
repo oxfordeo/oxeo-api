@@ -91,6 +91,16 @@ def to_companyquery(
     return asset_query
 
 
+def to_forecastquery(
+    bbox: List[float] = Query(
+        default=..., example=[30.140787, -18.213369, 35.12137, -15.685905]
+    ),
+):
+    forecast_query = schemas.ForecastQuery(bbox=bbox)
+
+    return forecast_query
+
+
 def to_eventquery(
     aoi_id: str = Query(default=..., example="2197"),
     start_datetime: str = Query(default=..., example="2018-01-01"),
