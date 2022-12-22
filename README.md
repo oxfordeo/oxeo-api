@@ -1,15 +1,16 @@
-# your-repo-name
-This is a template repository for Oxeo.
+<img src="oxeo_logo.png" alt="oxeo logo" width="600"/>
 
-It has some default directories and pip setup to get you started.
+[OxEO](https://www.oxfordeo.com/) is an earth observation water risk company. This repository builds and deploys OxEO's data pipeline Flows via Prefect. OxEO's data service is comprised of three repos: [oxeo-flows](https://github.com/oxfordeo/oxeo-flows), [oxeo-water](https://github.com/oxfordeo/oxeo-water), and [oxeo-api](https://github.com/oxfordeo/oxeo-api). This work was generously supported by the [European Space Agency Φ-lab](https://philab.esa.int/) and [World Food Programme (WFP) Innovation Accelerator](https://innovation.wfp.org/) as part of the [EO & AI for SDGs Innovation Initiative](https://wfpinnovation.medium.com/how-can-earth-observation-and-artificial-intelligence-help-people-in-need-5e56efc5c061).
 
-## How to use it
-1. Customise this README (i.e. delete this section).
-2. Delete any directories that you don't need.
-3. Rename the directory inside `oxeo/` to your submodule name.
-4. Don't put an `__init__.py` file inside `oxeo/` or you'll break things.
-5. Edit `setup.cfg` lines 7-8 to reflect the name. Also add requirements to line 13 and below. Add an entrypoint if needed.
-6. Or if you don't need to `pip install` this repo, comment out those lines and just edit `requirements.txt` as needed.
+Copyright © 2022 Oxford Earth Observation Ltd.
+
+---
+
+# oxeo-api
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+This repo provides the API and database version control for the oxeo-api data service. This repo is intended to be deployed via an [AWS Lambda](https://aws.amazon.com/lambda/) service. Routes are built with [FastAPI](https://fastapi.tiangolo.com/). The production endpoint is https://api.oxfordeo.com.
+
 
 ## Installation
 ```
@@ -55,3 +56,7 @@ Run tests:
 ```
 tox
 ```
+
+## Deployment
+
+Deployment to AWS Lambda uses [Github Actions](.github/workflows/) for Continuous Integration and Deployment. Pushes to `main` are automatically built and deployed.
